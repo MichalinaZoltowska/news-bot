@@ -17,10 +17,14 @@ logging.basicConfig(
 DB_NAME = "news_database.db"
 SIMILARITY_THRESHOLD = 75 
 
-# Aktualne, sprawdzone i stabilne źródła RSS
+# Pełna lista Twoich wymarzonych źródeł
 RSS_FEEDS = {
     "TVN24 Najnowsze": "https://tvn24.pl/najnowsze.xml",
-    "Rzeczpospolita": "https://www.rp.pl/rss/11"
+    "Rzeczpospolita": "https://www.rp.pl/rss/11",
+    "PAP (Kraj)": "https://www.pap.pl/rss/pl/1",
+    "PAP (Świat)": "https://www.pap.pl/rss/pl/2",
+    "Polskie Radio": "https://www.polskieradio.pl/stacja/3/rss.aspx",
+    "Dziennik Gazeta Prawna": "https://gospodarka.dziennik.pl/rss.xml"
 }
 
 def init_db():
@@ -37,7 +41,6 @@ def init_db():
             )
         ''')
         conn.commit()
-    logging.info("Baza danych zostala zainicjalizowana.")
 
 def is_duplicate(cursor, new_title):
     cursor.execute("SELECT title FROM articles ORDER BY id DESC LIMIT 100")
@@ -59,13 +62,13 @@ def fetch_and_save_news():
 
         for source_name, url in RSS_FEEDS.items():
             try:
-                feed = feedparser.parse(url)
+                # TRICK DEWELOPERSKI: Udajemy przeglądarkę Mozilla, żeby PAP i Polskie Radio nas nie blokowały
+                feed = feedparser.parse(url, agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
                 logging.info(f"Pobieranie ze źródła: {source_name} (znaleziono {len(feed.entries)} wpisów)")
                 
                 for entry in feed.entries:
                     title = getattr(entry, 'title', '').strip()
                     
-                    # Inteligentne szukanie linku (odporne na format Rzeczpospolitej)
                     link = getattr(entry, 'link', '')
                     if not link and hasattr(entry, 'id'):
                         link = entry.id
